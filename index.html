@@ -1,16 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="fa" dir="rtl">
 <head>
-    <title>Test Page</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فرم رزرو</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; color: var(--tg-theme-text-color); background: var(--tg-theme-bg-color); padding-bottom: 80px; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .time-slot { display: inline-block; margin: 5px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; }
+        .time-slot.selected { background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
+        .time-slot.disabled { background-color: #f0f0f0; color: #aaa; cursor: not-allowed; }
+    </style>
 </head>
 <body>
-    <button id="test-btn">دکمه تست</button>
+    <h3>فرم ثبت رزرو</h3>
+    <form id="booking-form">
+        <input type="text" id="name" name="name" class="form-input" placeholder="نام کامل" required>
+        <input type="tel" id="phone" name="phone" class="form-input" placeholder="شماره تماس" required>
+        <input type="text" id="service" name="service" class="form-input" placeholder="خدمت مورد نظر" required>
+        <hr>
+        <input type="date" id="booking-date" class="form-input" required>
+        <div id="time-slots-container">ابتدا یک تاریخ انتخاب کنید...</div>
+        <input type="hidden" id="selected-time" name="selected-time" class="form-input">
+    </form>
+
     <script>
-        Telegram.WebApp.ready();
-        document.getElementById('test-btn').addEventListener('click', function() {
-            const encodedMessage = encodeURIComponent('این یک پیام تست است.');
-            window.location.href = `tg://msg_url?text=${encodedMessage}`;
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+
+        const mainBtn = tg.MainButton;
+        mainBtn.setText('تکمیل اطلاعات جهت ارسال');
+        mainBtn.disable();
+        mainBtn.hide();
+
+        function validateForm() {
+            let allFilled = true;
+            document.querySelectorAll('.form-input').forEach(input => {
+                if (!input.value) allFilled = false;
+            });
+            if (allFilled) {
+                mainBtn.enable().show();
+            } else {
+                mainBtn.disable().hide();
+            }
+        }
+
+        document.querySelectorAll('.form-input').forEach(input => {
+            input.addEventListener('input', validateForm);
+        });
+
+        mainBtn.onClick(function() {
+            const data = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                service: document.getElementById('service').value,
+                booking_date: document.getElementById('booking-date').value,
+                booking_time: document.getElementById('selected-time').value,
+            };
+            
+            // استفاده از روش استاندارد ارسال داده به صورت JSON
+            tg.sendData(JSON.stringify(data)); 
+        });
+        
+        // این رویداد باعث بسته شدن خودکار فرم بعد از ارسال موفق می‌شود
+        tg.onEvent('mainButtonClicked', function(){
+            tg.close();
+        });
+
+
+        // کد دریافت تایم‌های پویا بدون تغییر باقی می‌ماند
+        const bookingDateInput = document.getElementById('booking-date');
+        const N8N_API_URL = 'https://n8n.turquoise-stone.com/webhook/a5320a44-8588-4041-bb95-0bc39dd2569e'; // ## آدرس وبهوک API خود را اینجا قرار دهید ##
+        const ALL_AVAILABLE_TIMES = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00"];
+        bookingDateInput.addEventListener('change', async function() {
+            const selectedDate = this.value;
+            if (!selectedDate) return;
+            const timeSlotsContainer = document.getElementById('time-slots-container');
+            timeSlotsContainer.innerHTML = 'در حال بررسی تایم‌های موجود...';
+            try {
+                const response = await fetch(`${N8N_API_URL}?date=${selectedDate}`);
+                const data = await response.json();
+                const bookedTimes = data.booked_times || [];
+                timeSlotsContainer.innerHTML = '';
+                ALL_AVAILABLE_TIMES.forEach(time => {
+                    const isBooked = bookedTimes.includes(time);
+                    const slotDiv = document.createElement('div');
+                    slotDiv.className = 'time-slot';
+                    slotDiv.textContent = time;
+                    if (isBooked) {
+                        slotDiv.classList.add('disabled');
+                    } else {
+                        slotDiv.addEventListener('click', function() {
+                            document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                            this.classList.add('selected');
+                            document.getElementById('selected-time').value = time;
+                            validateForm();
+                        });
+                    }
+                    timeSlotsContainer.appendChild(slotDiv);
+                });
+            } catch (error) {
+                timeSlotsContainer.innerHTML = 'خطا در دریافت اطلاعات. لطفا دوباره تلاش کنید.';
+                console.error('Error fetching times:', error);
+            }
         });
     </script>
 </body>
