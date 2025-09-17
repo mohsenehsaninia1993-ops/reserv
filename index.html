@@ -6,6 +6,7 @@
     <title>فرم رزرو</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* استایل‌ها بدون تغییر */
         body { font-family: sans-serif; padding: 20px; color: var(--tg-theme-text-color); background: var(--tg-theme-bg-color); }
         input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         button { width: 100%; padding: 15px; background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; border-radius: 5px; cursor: pointer; }
@@ -19,17 +20,13 @@
     <form id="booking-form">
         <label for="name">نام کامل:</label>
         <input type="text" id="name" name="name" required>
-
         <label for="phone">شماره تماس:</label>
         <input type="tel" id="phone" name="phone" required>
-
         <label for="service">خدمت مورد نظر:</label>
         <input type="text" id="service" name="service" required>
         <hr>
-
         <label for="booking-date">تاریخ را انتخاب کنید:</label>
         <input type="date" id="booking-date" required>
-
         <label>ساعت را انتخاب کنید:</label>
         <div id="time-slots-container">ابتدا یک تاریخ انتخاب کنید...</div>
         <input type="hidden" id="selected-time" name="selected-time">
@@ -40,17 +37,13 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
 
+        // ... (بخش بزرگی از کد جاوا اسکریپت مربوط به انتخاب تاریخ و ساعت بدون تغییر باقی می‌ماند) ...
         const bookingDateInput = document.getElementById('booking-date');
         const timeSlotsContainer = document.getElementById('time-slots-container');
         const selectedTimeInput = document.getElementById('selected-time');
         const submitBtn = document.getElementById('submit-btn');
-        
-        // ## اینجا آدرس وبهوک ورک‌فلوی API خود را قرار دهید ##
-        const N8N_API_URL = 'https://n8n.turquoise-stone.com/webhook/a5320a44-8588-4041-bb95-0bc39dd2569e'; 
-
+        const N8N_API_URL = 'https://YOUR_N8N_INSTANCE/webhook/YOUR_API_WEBHOOK_ID'; 
         const ALL_AVAILABLE_TIMES = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00"];
-
-        // وقتی کاربر تاریخی را انتخاب می‌کند (این بخش بدون تغییر است)
         bookingDateInput.addEventListener('change', async function() {
             const selectedDate = this.value;
             if (!selectedDate) return;
@@ -82,8 +75,8 @@
             }
         });
 
+
         // ### بخش کلیدی و تغییر یافته ###
-        // وقتی کاربر دکمه ارسال نهایی را می‌زند
         submitBtn.addEventListener('click', function() {
             let name = document.getElementById('name').value;
             let phone = document.getElementById('phone').value;
@@ -96,7 +89,6 @@
                 return;
             }
 
-            // ساخت پیام متنی کامل با تمام جزئیات
             const messageText = `رزرو جدید:
 نام: ${name}
 شماره تماس: ${phone}
@@ -104,8 +96,14 @@
 تاریخ: ${date}
 ساعت: ${time}`;
             
-            // جابجایی به چت و قرار دادن پیام در کادر متن کاربر
-            tg.switchInlineQuery(messageText, []);
+            // **تغییر اصلی اینجاست**
+            // متن را برای قرار گرفتن در URL آماده می‌کنیم
+            const encodedMessage = encodeURIComponent(messageText);
+            
+            // با استفاده از این لینک مخصوص، به تلگرام می‌گوییم متن را در کادر چت قرار دهد
+            window.location.href = `tg://msg_url?text=${encodedMessage}`;
+
+            // نیازی به بستن پنجره نیست چون لینک بالا این کار را انجام می‌دهد
         });
     </script>
 </body>
