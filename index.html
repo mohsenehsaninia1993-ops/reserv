@@ -6,8 +6,9 @@
     <title>فرم رزرو</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; color: var(--tg-theme-text-color); background: var(--tg-theme-bg-color); padding-bottom: 80px; /* اضافه کردن فاصله برای دکمه اصلی */ }
+        body { font-family: sans-serif; padding: 20px; color: var(--tg-theme-text-color); background: var(--tg-theme-bg-color); }
         input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; border-radius: 5px; cursor: pointer; }
         .time-slot { display: inline-block; margin: 5px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; }
         .time-slot.selected { background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
         .time-slot.disabled { background-color: #f0f0f0; color: #aaa; cursor: not-allowed; }
@@ -17,84 +18,39 @@
     <h3>فرم ثبت رزرو</h3>
     <form id="booking-form">
         <label for="name">نام کامل:</label>
-        <input type="text" id="name" name="name" class="form-input" required>
+        <input type="text" id="name" name="name" required>
 
         <label for="phone">شماره تماس:</label>
-        <input type="tel" id="phone" name="phone" class="form-input" required>
+        <input type="tel" id="phone" name="phone" required>
 
         <label for="service">خدمت مورد نظر:</label>
-        <input type="text" id="service" name="service" class="form-input" required>
+        <input type="text" id="service" name="service" required>
         <hr>
 
         <label for="booking-date">تاریخ را انتخاب کنید:</label>
-        <input type="date" id="booking-date" class="form-input" required>
+        <input type="date" id="booking-date" required>
 
         <label>ساعت را انتخاب کنید:</label>
         <div id="time-slots-container">ابتدا یک تاریخ انتخاب کنید...</div>
-        <input type="hidden" id="selected-time" name="selected-time" class="form-input">
+        <input type="hidden" id="selected-time" name="selected-time">
     </form>
+    <button id="submit-btn">آماده‌سازی پیام رزرو</button>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
 
-        // ### بخش جدید: کار با دکمه اصلی تلگرام ###
-        const mainBtn = tg.MainButton;
-        mainBtn.setText('تکمیل اطلاعات جهت ارسال'); // متنی که روی دکمه نمایش داده می‌شود
-        mainBtn.disable(); // دکمه در ابتدا غیرفعال است
-        mainBtn.hide();    // دکمه در ابتدا مخفی است
-
-        const formInputs = document.querySelectorAll('.form-input');
-        const timeSlotsContainer = document.getElementById('time-slots-container');
-
-        // تابعی برای بررسی وضعیت فرم
-        function validateForm() {
-            let allFilled = true;
-            formInputs.forEach(input => {
-                if (!input.value) {
-                    allFilled = false;
-                }
-            });
-            
-            if (allFilled) {
-                mainBtn.enable(); // اگر همه فیلدها پر بودند، دکمه را فعال کن
-                mainBtn.show();   // و نمایش بده
-            } else {
-                mainBtn.disable(); // در غیر این صورت، غیرفعال کن
-                mainBtn.hide();    // و مخفی کن
-            }
-        }
-
-        // به تمام فیلدهای فرم یک event listener اضافه می‌کنیم
-        formInputs.forEach(input => {
-            input.addEventListener('input', validateForm);
-        });
-
-        // وقتی کاربر روی دکمه اصلی تلگرام کلیک می‌کند
-        mainBtn.onClick(function() {
-            let name = document.getElementById('name').value;
-            let phone = document.getElementById('phone').value;
-            let service = document.getElementById('service').value;
-            let date = document.getElementById('booking-date').value;
-            let time = document.getElementById('selected-time').value;
-
-            const messageText = `رزرو جدید:
-نام: ${name}
-شماره تماس: ${phone}
-خدمت: ${service}
-تاریخ: ${date}
-ساعت: ${time}`;
-            
-            // حالا از این روش استفاده می‌کنیم که مطمئن‌تر است
-            tg.sendData(messageText);
-            // نکته: ما دوباره به sendData برگشتیم، چون وقتی از MainButton فراخوانی شود،
-            // احتمال فعال نبودن Inline Mode کمتر مشکل‌ساز است. این روش استاندارد است.
-        });
-
-
-        // ... (بخش کد مربوط به دریافت تایم‌ها بدون تغییر باقی می‌ماند) ...
         const bookingDateInput = document.getElementById('booking-date');
+        const timeSlotsContainer = document.getElementById('time-slots-container');
+        const selectedTimeInput = document.getElementById('selected-time');
+        const submitBtn = document.getElementById('submit-btn');
+        
+        // ## اینجا آدرس وبهوک ورک‌فلوی API خود را قرار دهید ##
         const N8N_API_URL = 'https://n8n.turquoise-stone.com/webhook/a5320a44-8588-4041-bb95-0bc39dd2569e'; 
+
         const ALL_AVAILABLE_TIMES = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00"];
+
+        // وقتی کاربر تاریخی را انتخاب می‌کند (این بخش بدون تغییر است)
         bookingDateInput.addEventListener('change', async function() {
             const selectedDate = this.value;
             if (!selectedDate) return;
@@ -115,8 +71,7 @@
                         slotDiv.addEventListener('click', function() {
                             document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
                             this.classList.add('selected');
-                            document.getElementById('selected-time').value = time;
-                            validateForm(); // بعد از انتخاب ساعت، فرم را دوباره بررسی کن
+                            selectedTimeInput.value = time;
                         });
                     }
                     timeSlotsContainer.appendChild(slotDiv);
@@ -125,6 +80,38 @@
                 timeSlotsContainer.innerHTML = 'خطا در دریافت اطلاعات. لطفا دوباره تلاش کنید.';
                 console.error('Error fetching times:', error);
             }
+        });
+
+        // ### بخش کلیدی که اصلاح شده است ###
+        // وقتی کاربر دکمه ارسال نهایی را می‌زند
+        submitBtn.addEventListener('click', function() {
+            let name = document.getElementById('name').value;
+            let phone = document.getElementById('phone').value;
+            let service = document.getElementById('service').value;
+            let date = bookingDateInput.value;
+            let time = selectedTimeInput.value;
+
+            if (!name || !phone || !service || !date || !time) {
+                tg.showAlert('لطفا تمام فیلدها را به درستی پر کنید.');
+                return;
+            }
+
+            // ساخت پیام متنی کامل با تمام جزئیات
+            const messageText = `رزرو جدید:
+نام: ${name}
+شماره تماس: ${phone}
+خدمت: ${service}
+تاریخ: ${date}
+ساعت: ${time}`;
+            
+            // **تغییر اصلی اینجاست**
+            // به جای tg.switchInlineQuery از این روش استفاده می‌کنیم:
+            
+            // ۱. متن را برای قرار گرفتن در URL آماده می‌کنیم
+            const encodedMessage = encodeURIComponent(messageText);
+            
+            // ۲. با استفاده از این لینک مخصوص، به تلگرام می‌گوییم متن را در کادر چت قرار دهد
+            window.location.href = `tg://msg_url?text=${encodedMessage}`;
         });
     </script>
 </body>
